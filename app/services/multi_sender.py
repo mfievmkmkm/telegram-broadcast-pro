@@ -23,7 +23,10 @@ class DialogCandidate:
 class MultiSender:
     async def open_client(self, account: ConnectedAccount) -> TelegramClient:
         session = decrypt_session(account.session_enc)
-        client = TelegramClient(StringSession(session), settings.api_id, settings.api_hash, connection_retries=4, request_retries=2)
+        client = TelegramClient(
+            StringSession(session), settings.api_id, settings.api_hash,
+            connection_retries=4, request_retries=2,
+        )
         await client.connect()
         if not await client.is_user_authorized():
             await client.disconnect()
@@ -47,7 +50,7 @@ class MultiSender:
         except Exception:
             pass
 
-    async def list_dialogs(self, account: ConnectedAccount, limit: int = 80) -> list[DialogCandidate]:
+    async def list_dialogs(self, account: ConnectedAccount, limit: int = 100) -> list[DialogCandidate]:
         client = await self.open_client(account)
         result: list[DialogCandidate] = []
         try:
@@ -55,16 +58,23 @@ class MultiSender:
                 entity = dialog.entity
                 if isinstance(entity, types.User):
                     continue
+
                 if isinstance(entity, types.Channel):
+                    is_channel = bool(getattr(entity, "broadcast", False))
+                    if is_channel:
+                        rights = getattr(entity, "admin_rights", None)
+                        can_post = bool(getattr(entity, "creator", False)) or bool(rights and getattr(rights, "post_messages", False))
+                        if not can_post:
+                            continue
                     kind = "channel"
                     access_hash = getattr(entity, "access_hash", None)
-                    is_channel = bool(getattr(entity, "broadcast", False))
                 elif isinstance(entity, types.Chat):
                     kind = "chat"
                     access_hash = None
                     is_channel = False
                 else:
                     continue
+
                 result.append(DialogCandidate(
                     peer_id=int(entity.id),
                     peer_kind=kind,

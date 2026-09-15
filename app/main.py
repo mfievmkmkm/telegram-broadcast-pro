@@ -7,8 +7,7 @@ from aiogram.client.default import DefaultBotProperties
 from aiogram.enums import ParseMode
 
 from .config import settings
-from .handlers.public_panel import router as public_router
-from .handlers.legacy_compat import router as legacy_router
+from .handlers.public_panel import router
 from .multi_db import init_multi_db
 from .services.multi_broadcast import multi_broadcast
 
@@ -34,8 +33,7 @@ async def main():
     await init_multi_db()
     bot = Bot(settings.bot_token, default=DefaultBotProperties(parse_mode=ParseMode.HTML))
     dp = Dispatcher()
-    dp.include_router(public_router)
-    dp.include_router(legacy_router)
+    dp.include_router(router)
 
     worker_task = asyncio.create_task(multi_broadcast.worker(), name="multi-broadcast-worker")
     try:

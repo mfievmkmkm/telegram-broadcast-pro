@@ -1,4 +1,2 @@
-start - открыть админ-панель
-panel - открыть админ-панель
-id - показать user_id и chat_id
-register_here - зарегистрировать текущую группу
+start - открыть Broadcast Pro
+panel - открыть главное меню

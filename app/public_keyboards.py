@@ -39,7 +39,6 @@ def qr_kb():
     return kb([
         [InlineKeyboardButton(text="✅ Я отсканировал", callback_data="login:qr:check")],
         [InlineKeyboardButton(text="🔄 Новый QR", callback_data="login:qr:refresh")],
-        [InlineKeyboardButton(text="❌ Отмена", callback_data="login:cancel")],
     ])
 
 

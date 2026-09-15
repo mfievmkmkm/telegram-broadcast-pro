@@ -4,19 +4,17 @@ import asyncio
 import logging
 from datetime import timedelta
 
-from aiogram import Bot
-from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
-from aiogram.exceptions import TelegramBadRequest, TelegramForbiddenError, TelegramRetryAfter
+from telethon.errors import FloodWaitError, RPCError
 
 from ..config import settings
 from ..db import repo, utcnow
+from .userbot import user_sender
 
 log = logging.getLogger("broadcast")
 
 
 class BroadcastService:
-    def __init__(self, bot: Bot):
-        self.bot = bot
+    def __init__(self):
         self._locks: set[int] = set()
 
     async def execute_campaign(self, campaign_id: int):
@@ -46,6 +44,11 @@ class BroadcastService:
 
             deliveries = await repo.pending_deliveries(run.id)
             by_chat = {x.chat_id: x for x in targets}
+            ids = [int(x) for x in (campaign.source_message_ids or str(campaign.source_message_id)).split(",") if x]
+            ids = sorted(set(ids))
+            extra_link = None
+            if campaign.button_text and campaign.button_url:
+                extra_link = (campaign.button_text, campaign.button_url)
 
             for delivery in deliveries:
                 current = await repo.get_campaign(campaign_id)
@@ -70,36 +73,13 @@ class BroadcastService:
                 while attempts <= settings.max_retries and not sent:
                     attempts += 1
                     try:
-                        ids = [int(x) for x in (campaign.source_message_ids or str(campaign.source_message_id)).split(",") if x]
-                        ids = sorted(set(ids))
-                        markup = None
-                        if campaign.button_text and campaign.button_url:
-                            markup = InlineKeyboardMarkup(inline_keyboard=[[
-                                InlineKeyboardButton(text=campaign.button_text, url=campaign.button_url)
-                            ]])
-                        if len(ids) == 1:
-                            await self.bot.copy_message(
-                                chat_id=delivery.chat_id,
-                                from_chat_id=campaign.source_chat_id,
-                                message_id=ids[0],
-                                reply_markup=markup,
-                            )
-                        else:
-                            copied = await self.bot.copy_messages(
-                                chat_id=delivery.chat_id,
-                                from_chat_id=campaign.source_chat_id,
-                                message_ids=ids[:100],
-                            )
-                            if markup and copied:
-                                await self.bot.edit_message_reply_markup(
-                                    chat_id=delivery.chat_id,
-                                    message_id=copied[-1].message_id,
-                                    reply_markup=markup,
-                                )
+                        await user_sender.resend_saved_bundle(delivery.chat_id, ids, extra_link=extra_link)
                         sent = True
-                    except TelegramRetryAfter as e:
-                        await asyncio.sleep(float(e.retry_after) + 1)
-                    except (TelegramForbiddenError, TelegramBadRequest) as e:
+                    except FloodWaitError as e:
+                        wait_for = int(getattr(e, "seconds", 0) or 0)
+                        error = f"FloodWaitError: wait {wait_for}s"
+                        await asyncio.sleep(wait_for + 1)
+                    except RPCError as e:
                         error = f"{type(e).__name__}: {e}"
                         break
                     except Exception as e:

@@ -7,17 +7,16 @@ from aiogram.client.default import DefaultBotProperties
 from aiogram.enums import ParseMode
 
 from .config import settings
-from .db import init_db
-from .handlers.user_panel import router
-from .services.broadcast import BroadcastService
-from .services.userbot import user_sender
+from .handlers.public_panel import router
+from .multi_db import init_multi_db
+from .services.multi_broadcast import multi_broadcast
 
 
 async def main():
     if not settings.bot_token:
         raise RuntimeError("BOT_TOKEN is empty")
-    if not settings.owner_ids:
-        raise RuntimeError("OWNER_IDS is empty")
+    if not settings.api_id or not settings.api_hash:
+        raise RuntimeError("API_ID and API_HASH are required for Telegram account login")
 
     if settings.database_url.startswith("sqlite"):
         os.makedirs("data", exist_ok=True)
@@ -27,19 +26,16 @@ async def main():
         format="%(asctime)s | %(levelname)s | %(name)s | %(message)s",
     )
 
-    await init_db()
-    await user_sender.start()
+    await init_multi_db()
     bot = Bot(settings.bot_token, default=DefaultBotProperties(parse_mode=ParseMode.HTML))
     dp = Dispatcher()
     dp.include_router(router)
 
-    service = BroadcastService()
-    worker_task = asyncio.create_task(service.worker(), name="campaign-worker")
+    worker_task = asyncio.create_task(multi_broadcast.worker(), name="multi-broadcast-worker")
     try:
         await dp.start_polling(bot, allowed_updates=dp.resolve_used_update_types())
     finally:
         worker_task.cancel()
-        await user_sender.stop()
         await bot.session.close()
 
 

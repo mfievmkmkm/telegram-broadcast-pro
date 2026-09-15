@@ -43,16 +43,17 @@ def target_menu(tags: list[str]):
 
 def schedule_menu():
     return kb([
-        [InlineKeyboardButton(text="🚀 Сейчас", callback_data="schedule:now"), InlineKeyboardButton(text="⏱ Через 10 минут", callback_data="schedule:10")],
-        [InlineKeyboardButton(text="🕒 Указать дату/время", callback_data="schedule:custom")],
-        [InlineKeyboardButton(text="🔁 Повторять по интервалу", callback_data="schedule:repeat")],
+        [InlineKeyboardButton(text="🚀 Один раз сейчас", callback_data="schedule:now"), InlineKeyboardButton(text="🕒 Старт по времени", callback_data="schedule:custom")],
+        [InlineKeyboardButton(text="🔁 15 мин", callback_data="schedule:repeat:15"), InlineKeyboardButton(text="🔁 30 мин", callback_data="schedule:repeat:30")],
+        [InlineKeyboardButton(text="🔁 1 час", callback_data="schedule:repeat:60"), InlineKeyboardButton(text="🔁 2 часа", callback_data="schedule:repeat:120")],
+        [InlineKeyboardButton(text="⚙️ Свой интервал", callback_data="schedule:repeat")],
         [InlineKeyboardButton(text="❌ Отмена", callback_data="flow:cancel")],
     ])
 
 
 def campaign_confirm():
     return kb([
-        [InlineKeyboardButton(text="🔗 CTA-кнопка", callback_data="campaign:button"), InlineKeyboardButton(text="🧪 Тест себе", callback_data="campaign:test")],
+        [InlineKeyboardButton(text="🧪 Тест в Избранное", callback_data="campaign:test")],
         [InlineKeyboardButton(text="✅ Создать кампанию", callback_data="campaign:confirm")],
         [InlineKeyboardButton(text="❌ Отмена", callback_data="flow:cancel")],
     ])

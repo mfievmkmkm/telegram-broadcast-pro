@@ -43,6 +43,8 @@ class UserSender:
         if not await self.client.is_user_authorized():
             raise RuntimeError("USER_SESSION is not authorized. Generate a new session locally.")
         self.me = await self.client.get_me()
+        # Prime the entity cache so numeric -100... IDs from existing dialogs resolve reliably.
+        await self.client.get_dialogs(limit=200)
         log.info("User sender authorized as id=%s username=%s", self.me.id, getattr(self.me, "username", None))
 
     async def stop(self):

@@ -2,7 +2,10 @@ from __future__ import annotations
 
 from datetime import datetime, timezone
 
-from sqlalchemy import BigInteger, Boolean, DateTime, ForeignKey, Integer, String, Text, UniqueConstraint, select, update
+from sqlalchemy import (
+    BigInteger, Boolean, DateTime, ForeignKey, Integer, String, Text,
+    UniqueConstraint, inspect, select, text, update,
+)
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
 
@@ -61,6 +64,7 @@ class UserCampaign(Base):
     status: Mapped[str] = mapped_column(String(24), default="scheduled")
     next_run_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True, index=True)
     interval_minutes: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    run_cursor: Mapped[int] = mapped_column(Integer, default=0)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
     last_run_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     last_result: Mapped[str | None] = mapped_column(Text, nullable=True)
@@ -86,6 +90,13 @@ Session = async_sessionmaker(engine, expire_on_commit=False, class_=AsyncSession
 async def init_multi_db():
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.create_all)
+
+        def _campaign_columns(sync_conn):
+            return {c["name"] for c in inspect(sync_conn).get_columns("user_campaigns")}
+
+        columns = await conn.run_sync(_campaign_columns)
+        if "run_cursor" not in columns:
+            await conn.execute(text("ALTER TABLE user_campaigns ADD COLUMN run_cursor INTEGER NOT NULL DEFAULT 0"))
 
 
 class MultiRepo:
@@ -218,6 +229,7 @@ class MultiRepo:
                 status="scheduled",
                 next_run_at=next_run_at,
                 interval_minutes=interval_minutes,
+                run_cursor=0,
             )
             s.add(obj)
             await s.commit()
@@ -255,6 +267,19 @@ class MultiRepo:
             for key, value in values.items():
                 if hasattr(obj, key):
                     setattr(obj, key, value)
+            await s.commit()
+
+    async def advance_campaign(self, campaign_id: int, run_cursor: int, sent_delta: int = 0, failed_delta: int = 0):
+        async with Session() as s:
+            await s.execute(
+                update(UserCampaign)
+                .where(UserCampaign.id == campaign_id)
+                .values(
+                    run_cursor=run_cursor,
+                    sent_total=UserCampaign.sent_total + int(sent_delta),
+                    failed_total=UserCampaign.failed_total + int(failed_delta),
+                )
+            )
             await s.commit()
 
     async def add_log(self, campaign_id: int, target_id: int, ok: bool, error: str | None = None):

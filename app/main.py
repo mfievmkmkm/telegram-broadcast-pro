@@ -8,7 +8,7 @@ from aiogram.enums import ParseMode
 
 from .config import settings
 from .db import init_db
-from .handlers.panel import router
+from .handlers.user_panel import router
 from .services.broadcast import BroadcastService
 from .services.userbot import user_sender
 

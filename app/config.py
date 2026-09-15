@@ -30,12 +30,13 @@ class Settings:
     database_url: str = _db_url(os.getenv("DATABASE_URL", ""))
     api_id: int = int(os.getenv("API_ID", "0") or 0)
     api_hash: str = os.getenv("API_HASH", "").strip()
-    user_session: str = os.getenv("USER_SESSION", "").strip()
+    session_secret: str = os.getenv("SESSION_SECRET", "").strip()
     timezone: str = os.getenv("TIMEZONE", "Asia/Yekaterinburg").strip()
-    send_delay_seconds: float = float(os.getenv("SEND_DELAY_SECONDS", "1.1"))
+    send_delay_seconds: float = float(os.getenv("SEND_DELAY_SECONDS", "2.0"))
     worker_poll_seconds: int = int(os.getenv("WORKER_POLL_SECONDS", "5"))
-    max_recipients_per_campaign: int = int(os.getenv("MAX_RECIPIENTS_PER_CAMPAIGN", "500"))
-    max_retries: int = int(os.getenv("MAX_RETRIES", "2"))
+    max_accounts_per_user: int = int(os.getenv("MAX_ACCOUNTS_PER_USER", "5"))
+    max_targets_per_campaign: int = int(os.getenv("MAX_TARGETS_PER_CAMPAIGN", "100"))
+    min_repeat_minutes: int = int(os.getenv("MIN_REPEAT_MINUTES", "15"))
     log_level: str = os.getenv("LOG_LEVEL", "INFO").upper()
 
 

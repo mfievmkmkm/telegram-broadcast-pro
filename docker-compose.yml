@@ -1,0 +1,27 @@
+services:
+  postgres:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_DB: broadcast
+      POSTGRES_USER: broadcast
+      POSTGRES_PASSWORD: broadcast
+    volumes:
+      - broadcast_pg:/var/lib/postgresql/data
+
+  bot:
+    build: .
+    depends_on:
+      - postgres
+    environment:
+      BOT_TOKEN: ${BOT_TOKEN}
+      OWNER_IDS: ${OWNER_IDS}
+      DATABASE_URL: postgresql://broadcast:broadcast@postgres:5432/broadcast
+      TIMEZONE: ${TIMEZONE:-Asia/Yekaterinburg}
+      SEND_DELAY_SECONDS: ${SEND_DELAY_SECONDS:-1.1}
+      WORKER_POLL_SECONDS: ${WORKER_POLL_SECONDS:-5}
+      MAX_RECIPIENTS_PER_CAMPAIGN: ${MAX_RECIPIENTS_PER_CAMPAIGN:-500}
+      MAX_RETRIES: ${MAX_RETRIES:-2}
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+
+volumes:
+  broadcast_pg:

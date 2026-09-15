@@ -1,13 +1,13 @@
-# Railway — деплой по шагам
+# Railway · Broadcast Pro User Mode
 
-1. Создай новый GitHub-репозиторий и загрузи в него содержимое этого проекта.
-2. Railway → New Project → Deploy from GitHub Repo.
-3. Добавь PostgreSQL-сервис в тот же Railway Project.
-4. В сервисе бота добавь переменные:
+## Обязательные Variables
 
 ```env
-BOT_TOKEN=токен BotFather
-OWNER_IDS=твой Telegram user_id
+BOT_TOKEN=...
+OWNER_IDS=123456789
+API_ID=...
+API_HASH=...
+USER_SESSION=...
 DATABASE_URL=${{Postgres.DATABASE_URL}}
 TIMEZONE=Asia/Yekaterinburg
 SEND_DELAY_SECONDS=1.1
@@ -17,19 +17,30 @@ MAX_RETRIES=2
 LOG_LEVEL=INFO
 ```
 
-Если PostgreSQL в Railway называется не `Postgres`, выбери его `DATABASE_URL` через интерфейс Railway Reference Variable вместо ручного ввода.
+## Что изменилось
 
-5. Railway автоматически увидит `Dockerfile` и запустит `python run.py`.
-6. В логах должна появиться строка запуска polling без traceback.
-7. Открой бота в Telegram и отправь `/start`.
-8. Если не знаешь свой Telegram ID — отправь `/id`.
+Теперь управляющий Telegram-бот не отправляет сообщения сам. Он только управляет кампаниями. Реальная отправка идёт через подключённый пользовательский аккаунт (Telethon / MTProto).
 
-## Если без PostgreSQL
+До добавления `API_ID`, `API_HASH` и `USER_SESSION` новый deploy будет завершаться ошибкой — это ожидаемо.
 
-Можно оставить:
+## Как получить USER_SESSION
 
-```env
-DATABASE_URL=sqlite+aiosqlite:///data/bot.db
+На своём ПК скачайте/клонируйте проект и выполните:
+
+```powershell
+py -m venv .venv
+.venv\Scripts\python.exe -m pip install "Telethon>=1.45,<2"
+.venv\Scripts\python.exe generate_session.py
 ```
 
-Но на Railway без persistent volume SQLite-файл может потеряться при пересоздании контейнера. Для продакшена лучше PostgreSQL.
+Введите API ID/Hash, телефон, код Telegram и 2FA только в локальном терминале. Полученную строку `USER_SESSION` добавьте в Railway как secret variable.
+
+После добавления всех трёх MTProto-переменных сделайте Redeploy.
+
+В нормальном логе появится строка вида:
+
+```text
+User sender authorized as id=... username=...
+```
+
+После этого запускается aiogram polling управляющего бота.

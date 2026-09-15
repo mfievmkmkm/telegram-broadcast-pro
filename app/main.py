@@ -10,6 +10,7 @@ from .config import settings
 from .db import init_db
 from .handlers.panel import router
 from .services.broadcast import BroadcastService
+from .services.userbot import user_sender
 
 
 async def main():
@@ -27,16 +28,18 @@ async def main():
     )
 
     await init_db()
+    await user_sender.start()
     bot = Bot(settings.bot_token, default=DefaultBotProperties(parse_mode=ParseMode.HTML))
     dp = Dispatcher()
     dp.include_router(router)
 
-    service = BroadcastService(bot)
+    service = BroadcastService()
     worker_task = asyncio.create_task(service.worker(), name="campaign-worker")
     try:
         await dp.start_polling(bot, allowed_updates=dp.resolve_used_update_types())
     finally:
         worker_task.cancel()
+        await user_sender.stop()
         await bot.session.close()
 
 

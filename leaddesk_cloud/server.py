@@ -39,7 +39,7 @@ def initialize():
             project TEXT NOT NULL, service TEXT NOT NULL,
             message TEXT NOT NULL, source_url TEXT NOT NULL,
             posted_on TEXT NOT NULL, status TEXT NOT NULL DEFAULT 'review',
-            created_at REAL NOT NULL, sent_at REAL, error TEXT NOT NULL DEFAULT ''
+            created_at REAL NOT NULL, sent_at REAL, attempted_at REAL, error TEXT NOT NULL DEFAULT ''
         )""")
         c.execute("CREATE TABLE IF NOT EXISTS kv (name TEXT PRIMARY KEY, value TEXT NOT NULL)")
         c.execute("INSERT OR IGNORE INTO kv VALUES('enabled','0')")
@@ -97,11 +97,12 @@ def e(s):
     return html.escape(str(s),quote=True)
 
 def counts():
+    # Count ATTEMPTS, not just successes, to prevent rapid failed DMs.
     now=time.time()
     with db() as c:
-        d=c.execute("SELECT count(*) FROM leads WHERE status='sent' AND sent_at>?",(now-86400,)).fetchone()[0]
-        h=c.execute("SELECT count(*) FROM leads WHERE status='sent' AND sent_at>?",(now-3600,)).fetchone()[0]
-        last=c.execute("SELECT max(sent_at) FROM leads WHERE status='sent'").fetchone()[0] or 0
+        d=c.execute("SELECT count(*) FROM leads WHERE attempted_at>?",(now-86400,)).fetchone()[0]
+        h=c.execute("SELECT count(*) FROM leads WHERE attempted_at>?",(now-3600,)).fetchone()[0]
+        last=c.execute("SELECT max(attempted_at) FROM leads").fetchone()[0] or 0
     return d,h,last
 
 def html_home():
@@ -125,10 +126,10 @@ def html_home():
     *{{box-sizing:border-box}}body{{margin:0;background:#0b1220;color:#e6eefc;font:15px system-ui,Arial}}main{{max-width:1090px;margin:35px auto;padding:0 16px}}h1{{font-size:29px;margin-bottom:5px}}.sub,small{{color:#a1b3ce}}.top{{display:flex;gap:16px;flex-wrap:wrap;align-items:center;margin:15px 0 25px}}.panel,article{{padding:18px;border:1px solid #293b53;background:#172338;border-radius:13px;margin:14px 0}}button{{border:0;border-radius:8px;background:#347cf0;color:#fff;padding:11px 14px;cursor:pointer;font-weight:650}}button:hover{{background:#5795ff}}input,textarea{{display:block;width:100%;padding:10px;margin:9px 0;background:#0b1829;color:#f4f8ff;border:1px solid #354960;border-radius:7px}}textarea{{resize:vertical}}input[type=file]{{padding:7px}}input[type=checkbox]{{width:auto;display:inline}}form{{display:inline-block;vertical-align:top;margin:5px 9px 5px 0}}form:has(textarea){{display:block}}form:has(textarea) button{{background:#415674}}a{{color:#82baff}}article header{{display:flex;gap:20px;align-items:center;flex-wrap:wrap}}.warn{{color:#ffcc8f}}.red{{background:#af4658}}.ok{{color:#91dec2}}.grid{{display:grid;grid-template-columns:1fr 1fr;gap:16px}}@media(max-width:660px){{.grid{{grid-template-columns:1fr}}}}
     </style></head><body><main>
     <h1>LeadDesk Cloud</h1><div class="sub">Индивидуальные отклики на опубликованные заказы · без холодных массовых рассылок</div>
-    <div class="panel"><div class="top"><b>Очередь: {state}</b><span>Telegram: {e(auth)}</span><span>Отправлено: {d}/5 за 24 ч · {h}/3 за час</span></div>
+    <div class="panel"><div class="top"><b>Очередь: {state}</b><span>Telegram: {e(auth)}</span><span>Попыток: {d}/5 за 24 ч · {h}/3 за час</span></div>
     <form method="post" action="/start"><label><input type="checkbox" required name="confirm" value="yes"> Я лично проверил публичные запросы и одобрил сообщения</label><button>Запустить одобренную очередь</button></form>
     <form method="post" action="/stop"><button class="red">Остановить очередь</button></form>
-    <p class="sub">При первом запуске отправка выключена. Отправляется не более 5 сообщений в сутки и 3 в час, пауза от 45 секунд. Ограничения Telegram не обходятся.</p></div>
+    <p class="sub">При первом запуске отправка выключена. Выполняется не более 5 попыток в сутки и 3 в час, пауза от 45 секунд. Ограничения Telegram не обходятся.</p></div>
     <div class="grid"><section class="panel"><h3>Загрузить подборку</h3><form method="post" action="/upload" enctype="multipart/form-data"><input name="file" type="file" accept=".json,.csv" required><button>Импортировать файл</button></form><p class="sub">JSON список или {{ "leads": [...] }} либо CSV. Поля: username, project, service, message, source_url, posted_on.</p></section>
     <section class="panel"><h3>Добавить заявку</h3><form method="post" action="/add">
     <input name="username" placeholder="@username" required maxlength="80"><input name="project" placeholder="Название задания" required maxlength="140">
@@ -295,7 +296,7 @@ async def worker(app):
                     continue
                 # Claim BEFORE the network request. An uncertain response stays 'sending'
                 # and requires manual reconciliation, so crash/restart never sends twice.
-                c.execute("UPDATE leads SET status='sending',error='' WHERE id=?",(row["id"],))
+                c.execute("UPDATE leads SET status='sending',attempted_at=?,error='' WHERE id=?",(time.time(),row["id"]))
                 c.commit()
             try:
                 problem,stop_now=await send_one(row)

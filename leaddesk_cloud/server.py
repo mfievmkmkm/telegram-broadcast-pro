@@ -14,7 +14,7 @@ from datetime import date
 from pathlib import Path
 from urllib.parse import urlsplit
 
-from aiohttp import web
+from aiohttp import web, BasicAuth
 
 DATA=Path(os.getenv("LEADDESK_DATA_DIR", "/data"))
 DATA.mkdir(parents=True,exist_ok=True)
@@ -145,7 +145,7 @@ def authorize(request):
         raise web.HTTPServiceUnavailable(text="Сервис защищён. Сначала установи ADMIN_PASSWORD (16+ символов) в Railway Variables.")
     authorization=request.headers.get("Authorization","")
     try:
-        basic=web.BasicAuth.decode(authorization)
+        basic=BasicAuth.decode(authorization)
         good=basic.login=="admin" and hmac.compare_digest(basic.password,secret)
     except ValueError:
         good=False

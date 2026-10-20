@@ -12,6 +12,7 @@ class TestLeadDesk(unittest.TestCase):
         os.environ["LEADDESK_DATA_DIR"]=cls.temp.name
         import server
         cls.s=server
+        cls.s.initialize()
     @classmethod
     def tearDownClass(cls):
         cls.temp.cleanup()

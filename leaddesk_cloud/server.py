@@ -41,6 +41,10 @@ def initialize():
             posted_on TEXT NOT NULL, status TEXT NOT NULL DEFAULT 'review',
             created_at REAL NOT NULL, sent_at REAL, attempted_at REAL, error TEXT NOT NULL DEFAULT ''
         )""")
+        # Upgrade older SQLite volume databases without losing contacts/history.
+        fields={row[1] for row in c.execute("PRAGMA table_info(leads)").fetchall()}
+        if "attempted_at" not in fields:
+            c.execute("ALTER TABLE leads ADD COLUMN attempted_at REAL")
         c.execute("CREATE TABLE IF NOT EXISTS kv (name TEXT PRIMARY KEY, value TEXT NOT NULL)")
         c.execute("INSERT OR IGNORE INTO kv VALUES('enabled','0')")
         c.commit()

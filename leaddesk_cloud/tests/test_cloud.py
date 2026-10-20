@@ -53,6 +53,15 @@ class TestLeadDesk(unittest.TestCase):
         self.assertFalse(self.s.enabled())
         self.assertEqual(self.s.counts()[:2],(0,0))
 
+    def test_quota_counts_failed_attempts_as_well_as_success(self):
+        self.s.add_rows([self.lead()])
+        with self.s.db() as c:
+            c.execute("UPDATE leads SET status='error',attempted_at=strftime('%s','now') WHERE username='candidate_writer'")
+            c.commit()
+        daily,hourly,last=self.s.counts()
+        self.assertEqual((daily,hourly),(1,1))
+        self.assertGreater(last,0)
+
     def test_no_credentials_means_no_delivery(self):
         with patch.dict(os.environ,{"TG_API_ID":"","TG_API_HASH":"","TG_STRING_SESSION":""}):
             self.assertFalse(self.s.configured())

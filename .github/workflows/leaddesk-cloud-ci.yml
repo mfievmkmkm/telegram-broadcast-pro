@@ -1,0 +1,20 @@
+name: LeadDesk Cloud CI
+on:
+  push:
+    branches: [leaddesk-cloud-optin-20261020]
+    paths: ["leaddesk_cloud/**", ".github/workflows/leaddesk-cloud-ci.yml"]
+  pull_request:
+    paths: ["leaddesk_cloud/**", ".github/workflows/leaddesk-cloud-ci.yml"]
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: python -m pip install -r leaddesk_cloud/requirements.txt
+      - run: python -m compileall -q leaddesk_cloud
+      - run: python -m unittest discover -s leaddesk_cloud/tests -v
+        env:
+          PYTHONPATH: leaddesk_cloud

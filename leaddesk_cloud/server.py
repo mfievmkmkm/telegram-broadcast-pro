@@ -62,6 +62,7 @@ def configured():
         return False
 
 def valid(row):
+    row=dict(row)
     u=str(row.get("username","")).strip()
     if u.startswith("https://t.me/"):u=u[len("https://t.me/"):]
     u=u.strip("/").lstrip("@").lower()
@@ -117,7 +118,7 @@ def html_home():
         controls+=f'<form method="post" action="/save"><input type="hidden" name="id" value="{rid}"><textarea name="message" rows="3" maxlength="1800">{e(r["message"])}</textarea><button>Сохранить текст (снять одобрение)</button></form>'
         if status=="sending":
             controls+='<div class="warn">Отправка могла выполниться до сбоя. Сначала проверь чат вручную; автоматического повтора нет.</div>'
-        items.append(f'<article><header><b>@{e(r["username"])}</b> <small>{e(status)}</small> <a target="_blank" rel="noopener noreferrer" href="{e(r["source_url"])}">Открыть объявление ↗</a></header><div class="sub">{e(r["project"])} · {e(r["service"])} · {e(r["posted_on"])}</div><p>{e(r["error"] or err or "")}</p>{controls}</article>')
+        items.append(f'<article><header><b>@{e(r["username"])}</b> <small>{e(status)}</small> <a target="_blank" rel="noopener noreferrer" href="{e(r["source_url"]) if str(r["source_url"]).startswith("https://") else ""}">Открыть объявление ↗</a></header><div class="sub">{e(r["project"])} · {e(r["service"])} · {e(r["posted_on"])}</div><p>{e(r["error"] or err or "")}</p>{controls}</article>')
     auth="Подключён" if configured() else "Не подключён: TG_API_ID, TG_API_HASH и TG_STRING_SESSION задаются в Railway Variables"
     state="ЗАПУЩЕНА" if enabled() else "ОСТАНОВЛЕНА"
     return f'''<!doctype html><html lang="ru"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>LeadDesk Cloud</title><style>
